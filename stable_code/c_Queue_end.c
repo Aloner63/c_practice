@@ -10,9 +10,9 @@ typedef unsigned short int uint16_t;
 // 定义队列结构体
 typedef struct {
     uint16_t data[MAX_QUEUE_SIZE]; // 存储浮点数数据的数组
-    int front;  // 前端索引，用于出队
-    int rear;   // 后端索引，用于入队
-    
+    int front;  
+    int rear;
+    // int currentIndex;
 } intQueue;
 
 // 打印队列中的所有数据
@@ -122,11 +122,11 @@ uint16_t getMin(const intQueue *queue) {
 uint16_t Stable_Judge(uint16_t f)	 //f是 传感器 源源不断的值				
 {
     static intQueue myintQueue;
-    uint16_t sum,avg;               //数据之和和8数的平均值
-    uint16_t maxValue,minValue;     //最大值和最小值
+    uint16_t sum,avg;               //数据之和
+    static uint16_t maxValue,minValue;     //最大值和最小值                     11.4改
     uint16_t out_que;               //出队数据的值
     static bool init_flag = false; 
-
+	static bool init_flag_1 = false;
     
     if(!isintQueueFull(&myintQueue))    //初始数据入队
     {
@@ -135,29 +135,48 @@ uint16_t Stable_Judge(uint16_t f)	 //f是 传感器 源源不断的值
             initializeintQueue(&myintQueue);    //初始化队列，仅运行一次
             init_flag = true;
         }
-        enqueueint(&myintQueue,f);
-        return 8;                       //初始10个数据入队时，返回8
+        enqueueint(&myintQueue,f);				
+        return 8;                       //初始数据入队时，返回8
     }
-    else
-    {
-        
+		
+    if(isintQueueFull(&myintQueue) && init_flag_1) 
+    {   
         out_que = dequeueint(&myintQueue);    //数据出队
         enqueueint(&myintQueue,f);            //数据入队
         
-        minValue = getMin(&myintQueue);     //获取最小值
-        maxValue = getMax(&myintQueue);     //获取最大值
-        
-        if (f <= minValue || f >= maxValue) //判断新入队的数据是否为稳定数值
-        {    
+        printf("当前队列中的元素为:");
+        printQueue(&myintQueue);
+
+        if (f <= minValue || f >= maxValue || out_que == minValue || out_que == maxValue) //判断新入队的数据是否为稳定数值
+        {   
+            printf("..................................................流程1\n");
+            //更新最大值和最小值
+            minValue = getMin(&myintQueue);     //获取最小值       
+            maxValue = getMax(&myintQueue);     //获取最大值
             sum=calculateSum(&myintQueue);  //队列数据的和
-            sum=sum-minValue-maxValue;      
-            avg=sum/8;
-            return avg;                     //返回去掉一个最大值，一个最小值之后，8个数的平均值
+    
+            avg=(sum-minValue-maxValue)/(MAX_QUEUE_SIZE-2);     //求平均值                   
+            return avg;                     //返回去掉一个最大值，一个最小值之后，的平均值
         }
         else
-        {      
-            return 8;
+        {   
+            printf("..................................................流程2\n");
+            sum=calculateSum(&myintQueue);  //队列数据的和
+            return (sum-minValue-maxValue)/(MAX_QUEUE_SIZE-2);  
         }        
+    }
+    else
+    {
+        printf("..................................................流程3\n");
+        out_que = dequeueint(&myintQueue);    //数据出队
+        enqueueint(&myintQueue,f);            //数据入队
+
+        minValue = getMin(&myintQueue);     //获取最小值
+        maxValue = getMax(&myintQueue);     //获取最大值
+        sum=calculateSum(&myintQueue);  //队列数据的和
+        
+        init_flag_1=true;
+        return (sum-minValue-maxValue)/(MAX_QUEUE_SIZE-2);
     }  
 }
 
@@ -170,14 +189,14 @@ int main()
         clock_gettime(CLOCK_MONOTONIC, &ts);
         srand((unsigned)ts.tv_nsec);
 
-        uint16_t randomValue = 8 + (rand() % 8);        //模拟传感器传入的数值     8到15之间的随机数
+        uint16_t randomValue = 8 + (rand() % 5);        //模拟传感器传入的数值     8到8+2之间的随机数
         printf("传感器模拟数为。。。%u\n",randomValue);
 
         uint16_t a = Stable_Judge(randomValue);
         printf("最终输出值为。。。 %u\n", a);
         printf("\n");
 
-        sleep(0.5);                     
+        sleep(1);                     
     }
 
     return 0;
